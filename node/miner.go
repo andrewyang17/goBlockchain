@@ -1,0 +1,86 @@
+package node
+
+import (
+	"context"
+	"fmt"
+	"math/rand"
+	"time"
+
+	"github.com/andrewyang17/goBlockchain/database"
+	"github.com/ethereum/go-ethereum/common"
+)
+
+type PendingBlock struct {
+	parent database.Hash
+	number uint64
+	time   uint64
+	miner  common.Address
+	txs    []database.SignedTx
+}
+
+func NewPendingBlock(parent database.Hash, number uint64, miner common.Address, txs []database.SignedTx) PendingBlock {
+	return PendingBlock{
+		parent: parent,
+		number: number,
+		time:   uint64(time.Now().Unix()),
+		miner:  miner,
+		txs:    txs,
+	}
+}
+
+func Mine(ctx context.Context, pb PendingBlock, miningDifficulty uint) (database.Block, error) {
+	if len(pb.txs) == 0 {
+		return database.Block{}, fmt.Errorf("mining empty block is not allowed")
+	}
+
+	var block database.Block
+	var hash database.Hash
+	var nonce uint32
+
+	start := time.Now()
+	attempt := 0
+
+	for !database.IsBlockHashValid(hash, miningDifficulty) {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Mining cancelled!")
+
+			return database.Block{}, fmt.Errorf("mining cancelled. %s", ctx.Err())
+
+		default:
+			attempt++
+			nonce = generateNonce()
+
+			if attempt%1000000 == 0 || attempt == 1 {
+				fmt.Printf("Mining %d Pending TXs. Attempt: %d\n", len(pb.txs), attempt)
+			}
+
+			block = database.NewBlock(pb.parent, pb.number, nonce, pb.time, pb.miner, pb.txs)
+			blockHash, err := block.Hash()
+			if err != nil {
+				return database.Block{}, fmt.Errorf("couldn't mine block. %s", err.Error())
+			}
+
+			hash = blockHash
+		}
+	}
+
+	fmt.Printf("\nMined new Block '%x' using PoW:\n", hash)
+	fmt.Printf("\tHeight: '%v'\n", block.Header.Number)
+	fmt.Printf("\tNonce: '%v'\n", block.Header.Nonce)
+	fmt.Printf("\tCreated: '%v'\n", block.Header.Time)
+	fmt.Printf("\tMiner: '%v'\n", block.Header.Miner.String())
+	fmt.Printf("\tParent: '%v'\n\n", block.Header.Parent.Hex())
+
+	fmt.Printf("\tAttempt: '%v'\n", attempt)
+	fmt.Printf("\tTime: %s\n\n", time.Since(start))
+
+	return block, nil
+
+}
+
+func generateNonce() uint32 {
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	return rand.Uint32()
+}

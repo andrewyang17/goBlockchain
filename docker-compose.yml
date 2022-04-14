@@ -1,0 +1,9 @@
+version: "3.5"
+services:
+  gc-local:
+    build:
+      context: ./
+    entrypoint: /bin/sh
+    command: ["-c", "bash"]
+    volumes:
+      - ./:/build

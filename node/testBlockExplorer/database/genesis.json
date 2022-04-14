@@ -1,0 +1,9 @@
+{
+  "genesis_time": "2022-04-12T15:52:12Z",
+  "coin_name": "GoCoin",
+  "symbol": "GC",
+  "balances": {
+    "0x09eE50f2F37FcBA1845dE6FE5C762E83E65E755c": 1000000
+  },
+  "fork_tip_1": 35
+}
